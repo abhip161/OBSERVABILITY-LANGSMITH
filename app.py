@@ -1,10 +1,13 @@
 import uuid
 import os
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Client builder
-def build_clients(groq_key: str, gemini_key: str, serper_key: str) -> dict:
+def build_clients(groq_key: str, gemini_key: str, serper_key:str) -> dict:
     from langchain_groq import ChatGroq
     from langchain_openai import ChatOpenAI
     from langchain_community.utilities import GoogleSerperAPIWrapper
@@ -45,18 +48,31 @@ if "session_id" not in st.session_state:
 # Sidebar
 with st.sidebar:
     st.header("API Keys")
-    st.caption("Keys are stored only in your browser session and never saved.")
+    st.caption("Keys are loaded from .env if present or entered here.")
 
     st.subheader("LLM Keys")
-    groq_key   = st.text_input("Groq API Key *",   type="password", placeholder="gsk_...")
-    gemini_key = st.text_input("Gemini API Key *", type="password", placeholder="AIza...")
-    serper_key = st.text_input("Serper API Key *", type="password", placeholder="...")
+    groq_key   = st.text_input("Groq API Key *",   type="password", value=os.getenv("GROQ_API_KEY", ""), placeholder="gsk_...")
+    gemini_key = st.text_input("Gemini API Key *", type="password", value=os.getenv("GEMINI_API_KEY", ""), placeholder="AIza...")
+    serper_key = st.text_input("Serper API Key *", type="password", value=os.getenv("SERPER_API_KEY", ""), placeholder="...")
 
     st.subheader("LangSmith Observability")
-    ls_key     = st.text_input("LangSmith API Key *",    type="password", placeholder="ls__...")
-    ls_project = st.text_input("LangSmith Project Name *", placeholder="my-observability-demo")
+    ls_key     = st.text_input("LangSmith API Key *",    type="password", value=os.getenv("LANGSMITH_API_KEY", ""), placeholder="ls__...")
+    ls_project = st.text_input("LangSmith Project Name *", value=os.getenv("LANGSMITH_PROJECT", "OBSERVABILITY-LANGSMITH"), placeholder="my-observability-demo")
 
     keys_ready = all([groq_key, gemini_key, serper_key, ls_key, ls_project])
+
+    # Auto-initialize session if keys exist from .env and not initialized yet
+    if keys_ready and "clients" not in st.session_state:
+        try:
+            st.session_state.clients = build_clients(groq_key, gemini_key, serper_key)
+            os.environ["LANGSMITH_TRACING"] = "true"
+            os.environ["LANGSMITH_API_KEY"] = ls_key
+            os.environ["LANGSMITH_PROJECT"] = ls_project
+            st.session_state.ls_enabled = True
+            st.session_state.ls_project = ls_project
+        except Exception:
+            pass
+
 
     if st.button("Save Keys", type="primary", disabled=not keys_ready):
         try:
