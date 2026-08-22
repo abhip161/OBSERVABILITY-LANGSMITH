@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+.langgraph_api
 
 # Virtual environments
 .venv
